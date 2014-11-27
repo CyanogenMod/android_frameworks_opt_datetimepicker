@@ -19,6 +19,7 @@ package com.android.datetimepicker.date;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Paint.Align;
 import android.graphics.Paint.Style;
@@ -32,6 +33,7 @@ import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.text.format.Time;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
@@ -54,6 +56,7 @@ import java.util.Locale;
  */
 public abstract class MonthView extends View {
     private static final String TAG = "MonthView";
+    private static final boolean DEBUG = false;
 
     /**
      * These params can be passed into the view to control how it appears.
@@ -99,6 +102,19 @@ public abstract class MonthView extends View {
      */
     public static final String VIEW_PARAMS_SHOW_WK_NUM = "show_wk_num";
 
+
+    /**
+     * Configuration flags to customize the view's look
+     */
+    public static final String CONFIG_EDGE_PADDING = "edge_padding";
+    public static final String CONFIG_HEADER_SIZE = "header_size";
+    public static final String CONFIG_DAY_LABEL_TEXT_SIZE = "day_label_text_size";
+    public static final String CONFIG_MONTH_LABEL_TEXT_SIZE = "month_label_text_size";
+    public static final String CONFIG_MONTH_DAY_TEXT_SIZE = "month_day_text_size";
+    public static final String CONFIG_MONTH_HEADER_LABEL_FLAGS = "month_header_label_flags";
+    public static final String CONFIG_MONTH_ROW_HEIGHT = "month_row_height";
+    public static final String CONFIG_FILL_PARENT_CONTAINER = "fill_parent_container";
+
     protected static int DEFAULT_HEIGHT = 32;
     protected static int MIN_HEIGHT = 10;
     protected static final int DEFAULT_SELECTED_DAY = -1;
@@ -134,6 +150,7 @@ public abstract class MonthView extends View {
     protected Paint mMonthTitleBGPaint;
     protected Paint mSelectedCirclePaint;
     protected Paint mMonthDayLabelPaint;
+    protected Paint mLinePaint;
 
     private final Formatter mFormatter;
     private final StringBuilder mStringBuilder;
@@ -186,6 +203,11 @@ public abstract class MonthView extends View {
     protected int mDisabledDayTextColor;
     protected int mMonthTitleColor;
     protected int mMonthTitleBGColor;
+
+    // default format for the header label
+    protected int mHeaderDateFlags = DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_SHOW_YEAR
+            | DateUtils.FORMAT_NO_MONTH_DAY;
+    protected boolean mShouldFillParent;
 
     public MonthView(Context context) {
         this(context, null);
@@ -311,6 +333,11 @@ public abstract class MonthView extends View {
         mMonthDayLabelPaint.setTextAlign(Align.CENTER);
         mMonthDayLabelPaint.setFakeBoldText(true);
 
+        mLinePaint = new Paint();
+        mLinePaint.setAntiAlias(true);
+        mLinePaint.setStrokeWidth(0);
+        mLinePaint.setColor(Color.BLACK);
+
         mMonthNumPaint = new Paint();
         mMonthNumPaint.setAntiAlias(true);
         mMonthNumPaint.setTextSize(MINI_DAY_NUMBER_TEXT_SIZE);
@@ -327,6 +354,43 @@ public abstract class MonthView extends View {
     }
 
     private int mDayOfWeekStart = 0;
+
+    /**
+     * Override the default drawing parameters of the view
+     * @params input is a dictionary of attributes (CONFIG_*) with their corresponding values in
+     * pixels
+     */
+    public void customizeViewParameters(HashMap<String, Integer> params) {
+        for (String key : params.keySet()) {
+
+            int paramValue = params.get(key);
+            if (key.equals(CONFIG_MONTH_LABEL_TEXT_SIZE)) {
+                MONTH_LABEL_TEXT_SIZE = paramValue;
+
+            } else if (key.equals(CONFIG_HEADER_SIZE)) {
+                MONTH_HEADER_SIZE = paramValue;
+
+            } else if (key.equals(CONFIG_MONTH_DAY_TEXT_SIZE)) {
+                MONTH_DAY_LABEL_TEXT_SIZE = paramValue;
+                MINI_DAY_NUMBER_TEXT_SIZE = paramValue;
+
+            } else if (key.equals(CONFIG_MONTH_HEADER_LABEL_FLAGS)) {
+                mHeaderDateFlags = paramValue;
+
+            } else if (key.equals(CONFIG_MONTH_ROW_HEIGHT)) {
+                mRowHeight = paramValue;
+
+            } else if (key.equals(CONFIG_EDGE_PADDING)) {
+                mEdgePadding = paramValue;
+
+            } else if (key.equals(CONFIG_FILL_PARENT_CONTAINER)) {
+                mShouldFillParent = (paramValue == 1);
+            }
+        }
+
+        // reinitialize paints as some of the parameters might have changed
+        initView();
+    }
 
     /**
      * Sets all the parameters for displaying this week. The only required
@@ -413,8 +477,13 @@ public abstract class MonthView extends View {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), mRowHeight * mNumRows
-                + getMonthHeaderSize());
+        if (mShouldFillParent) {
+            setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec),
+                    MeasureSpec.getSize(heightMeasureSpec));
+        } else {
+            setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), mRowHeight * mNumRows
+                    + getMonthHeaderSize());
+        }
     }
 
     @Override
@@ -441,17 +510,20 @@ public abstract class MonthView extends View {
     }
 
     private String getMonthAndYearString() {
-        int flags = DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_SHOW_YEAR
-                | DateUtils.FORMAT_NO_MONTH_DAY;
         mStringBuilder.setLength(0);
         long millis = mCalendar.getTimeInMillis();
-        return DateUtils.formatDateRange(getContext(), mFormatter, millis, millis, flags,
+        return DateUtils.formatDateRange(getContext(), mFormatter, millis, millis, mHeaderDateFlags,
                 Time.getCurrentTimezone()).toString();
     }
 
     protected void drawMonthTitle(Canvas canvas) {
-        int x = (mWidth + 2 * mEdgePadding) / 2;
+        int x = mWidth / 2;
         int y = (getMonthHeaderSize() - MONTH_DAY_LABEL_TEXT_SIZE) / 2 + (MONTH_LABEL_TEXT_SIZE / 3);
+
+         if (DEBUG) {
+            canvas.drawLine(x, 0, x, MONTH_HEADER_SIZE, mLinePaint);
+            canvas.drawLine(0, MONTH_HEADER_SIZE, canvas.getWidth(), MONTH_HEADER_SIZE, mLinePaint);
+        }
         canvas.drawText(getMonthAndYearString(), x, y, mMonthTitlePaint);
     }
 
@@ -462,10 +534,11 @@ public abstract class MonthView extends View {
         for (int i = 0; i < mNumDays; i++) {
             int calendarDay = (i + mWeekStart) % mNumDays;
             int x = (2 * i + 1) * dayWidthHalf + mEdgePadding;
+
             mDayLabelCalendar.set(Calendar.DAY_OF_WEEK, calendarDay);
-            canvas.drawText(mDayLabelCalendar.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT,
-                    Locale.getDefault()).toUpperCase(Locale.getDefault()), x, y,
-                    mMonthDayLabelPaint);
+            String label = mDayLabelCalendar.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT,
+                            Locale.getDefault()).toUpperCase(Locale.getDefault());
+            canvas.drawText(label.substring(0, 1), x, y, mMonthDayLabelPaint);
         }
     }
 
@@ -482,7 +555,6 @@ public abstract class MonthView extends View {
         int j = findDayOffset();
         for (int dayNumber = 1; dayNumber <= mNumCells; dayNumber++) {
             final int x = (int)((2 * j + 1) * dayWidthHalf + mEdgePadding);
-
             int yRelativeToDay = (mRowHeight + MINI_DAY_NUMBER_TEXT_SIZE) / 2 - DAY_SEPARATOR_WIDTH;
 
             final int startX = (int)(x - dayWidthHalf);
