@@ -99,7 +99,7 @@ public abstract class MonthView extends View {
      */
     public static final String VIEW_PARAMS_SHOW_WK_NUM = "show_wk_num";
 
-    protected static int DEFAULT_HEIGHT = 32;
+    protected static int DEFAULT_HEIGHT = 20;
     protected static int MIN_HEIGHT = 10;
     protected static final int DEFAULT_SELECTED_DAY = -1;
     protected static final int DEFAULT_WEEK_START = Calendar.SUNDAY;
@@ -441,7 +441,7 @@ public abstract class MonthView extends View {
     }
 
     private String getMonthAndYearString() {
-        int flags = DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_SHOW_YEAR
+        int flags = DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_NO_YEAR
                 | DateUtils.FORMAT_NO_MONTH_DAY;
         mStringBuilder.setLength(0);
         long millis = mCalendar.getTimeInMillis();
@@ -457,15 +457,15 @@ public abstract class MonthView extends View {
 
     protected void drawMonthDayLabels(Canvas canvas) {
         int y = getMonthHeaderSize() - (MONTH_DAY_LABEL_TEXT_SIZE / 2);
-        int dayWidthHalf = (mWidth - mEdgePadding * 2) / (mNumDays * 2);
+        float dayWidthHalf = (mWidth - mEdgePadding * 2) / (mNumDays * 2.5f);
 
         for (int i = 0; i < mNumDays; i++) {
             int calendarDay = (i + mWeekStart) % mNumDays;
-            int x = (2 * i + 1) * dayWidthHalf + mEdgePadding;
+            int x = (int)((2 * i + 1) * dayWidthHalf + mEdgePadding);
             mDayLabelCalendar.set(Calendar.DAY_OF_WEEK, calendarDay);
-            canvas.drawText(mDayLabelCalendar.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT,
-                    Locale.getDefault()).toUpperCase(Locale.getDefault()), x, y,
-                    mMonthDayLabelPaint);
+            String label = mDayLabelCalendar.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT,
+                            Locale.getDefault()).toUpperCase(Locale.getDefault());
+            canvas.drawText(label.substring(0, 1), x, y, mMonthDayLabelPaint);
         }
     }
 
@@ -478,7 +478,9 @@ public abstract class MonthView extends View {
     protected void drawMonthNums(Canvas canvas) {
         int y = (((mRowHeight + MINI_DAY_NUMBER_TEXT_SIZE) / 2) - DAY_SEPARATOR_WIDTH)
                 + getMonthHeaderSize();
-        final float dayWidthHalf = (mWidth - mEdgePadding * 2) / (mNumDays * 2.0f);
+        float dayWidthHalf = (mWidth - mEdgePadding * 2) / (mNumDays * 2.0f);
+        dayWidthHalf -= 10f;
+        //float totalWidth = mWidth - (dayWidthHalf * mNumCells);
         int j = findDayOffset();
         for (int dayNumber = 1; dayNumber <= mNumCells; dayNumber++) {
             final int x = (int)((2 * j + 1) * dayWidthHalf + mEdgePadding);
