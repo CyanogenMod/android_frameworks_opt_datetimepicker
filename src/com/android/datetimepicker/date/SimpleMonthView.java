@@ -19,8 +19,6 @@ package com.android.datetimepicker.date;
 import android.content.Context;
 import android.graphics.Canvas;
 
-import java.util.Calendar;
-
 public class SimpleMonthView extends MonthView {
 
     public SimpleMonthView(Context context) {
@@ -31,7 +29,7 @@ public class SimpleMonthView extends MonthView {
     public void drawMonthDay(Canvas canvas, int year, int month, int day,
             int x, int y, int startX, int stopX, int startY, int stopY) {
         if (mSelectedDay == day) {
-            canvas.drawCircle(x , y - (MINI_DAY_NUMBER_TEXT_SIZE / 3), DAY_SELECTED_CIRCLE_SIZE,
+            canvas.drawCircle(x , y - (mMiniDayNumberTextSize / 3), mDaySelectedCircleSize,
                     mSelectedCirclePaint);
         }
 
