@@ -33,6 +33,7 @@ import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.text.format.Time;
 import android.util.AttributeSet;
+import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
@@ -117,6 +118,7 @@ public abstract class MonthView extends View {
     public static final String CONFIG_DAY_SELECTED_CIRCLE_COLOR = "day_selected_circle_color";
     public static final String CONFIG_DAY_SELECTED_CIRCLE_ALPHA = "day_selected_circle_alpha";
     public static final String CONFIG_CURRENT_DAY_COLOR = "current_day_color";
+    public static final String CONFIG_HEADER_TITLE_OFFSET = "header_title_offset";
 
     protected static int DEFAULT_HEIGHT = 32;
     protected static int MIN_HEIGHT = 10;
@@ -212,6 +214,7 @@ public abstract class MonthView extends View {
     protected boolean mShouldFillParent;
     protected int mHeaderTitleColor;
     protected int mSelectedCircleColor;
+    protected int mHeaderTitleOffset;
 
     public MonthView(Context context) {
         this(context, null);
@@ -405,6 +408,9 @@ public abstract class MonthView extends View {
 
             } else if (key.equals(CONFIG_DAY_SELECTED_CIRCLE_COLOR)) {
                 mSelectedCircleColor = paramValue;
+
+            } else if (key.equals(CONFIG_HEADER_TITLE_OFFSET)) {
+                mHeaderTitleOffset = paramValue;
             }
         }
 
@@ -539,9 +545,11 @@ public abstract class MonthView extends View {
     protected void drawMonthTitle(Canvas canvas) {
         // the title is centered within the view
         int x = mWidth / 2;
-        int y = (getMonthHeaderSize() - mMonthDayLabelTextSize) / 2 + (mMonthLabelTextSize / 3);
+        int y = (getMonthHeaderSize() - mMonthDayLabelTextSize) / 2 + (mMonthLabelTextSize / 3) +
+                mHeaderTitleOffset;
 
         if (DEBUG) {
+            canvas.drawLine(0, 0, canvas.getWidth(), 0, mLinePaint);
             canvas.drawLine(x, 0, x, mMonthHeaderSize, mLinePaint);
             canvas.drawLine(0, mMonthHeaderSize, canvas.getWidth(), mMonthHeaderSize, mLinePaint);
         }
@@ -653,6 +661,35 @@ public abstract class MonthView extends View {
         int day = column - findDayOffset() + 1;
         day += row * mNumDays;
         return day;
+    }
+
+    /**
+     * Returns the text center of the nearest Day relative to an input set of coordinates
+     *
+     * The returned location is the center of day text. This is useful when you are trying to map a
+     * click to the nearest day or when implementing snap functionality.
+     *
+     * @param clickX input x-coordinate
+     * @param clickY input y-coordinate
+     * @return a Pair of coordinates (x,y) that are the closest to the input, or null if the input
+     * isn't valid or inside the header region
+     */
+    public Pair<Float, Float> mapToNearestDayCoordinates(float clickX, float clickY) {
+        // ensure the click maps to a valid 'clickable' region of the view
+        if (getDayFromLocation(clickX, clickY) == -1) return null;
+
+        // map the click to a row and column
+        int row = (int) (clickY - getMonthHeaderSize()) / mRowHeight;
+        int column = (int) ((clickX - mEdgePadding) * mNumDays / (mWidth - 2 * mEdgePadding));
+
+        // calculate the day text center drawn at a particular row and column
+        final float dayWidthHalf = (mWidth - mEdgePadding * 2) / (mNumDays * 2.0f);
+        float retX = (2 * column + 1) * dayWidthHalf + mEdgePadding;
+        int startY = (((mRowHeight + mMiniDayNumberTextSize) / 2) - mDaySeparatorWidth)
+                + getMonthHeaderSize();
+        float retY = startY + row * mRowHeight;
+
+        return new Pair<Float, Float>(retX, retY);
     }
 
     /**
