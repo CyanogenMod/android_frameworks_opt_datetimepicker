@@ -552,13 +552,16 @@ public abstract class MonthView extends View {
         int y = getMonthHeaderSize() - (mMonthDayLabelTextSize / 2);
         int dayWidthHalf = (mWidth - mEdgePadding * 2) / (mNumDays * 2);
 
+        boolean isRtl = Utils.isRtl();          // current locale's written script direction
         for (int i = 0; i < mNumDays; i++) {
             int calendarDay = (i + mWeekStart) % mNumDays;
             int x = (2 * i + 1) * dayWidthHalf + mEdgePadding;
             mDayLabelCalendar.set(Calendar.DAY_OF_WEEK, calendarDay);
-            String label = mDayLabelCalendar.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT,
-                            Locale.getDefault()).toUpperCase(Locale.getDefault());
-            canvas.drawText(label.substring(0, 1), x, y, mMonthDayLabelPaint);
+            String dayDisplayName = mDayLabelCalendar.getDisplayName(Calendar.DAY_OF_WEEK,
+                    Calendar.SHORT, Locale.getDefault()).toUpperCase(Locale.getDefault());
+
+            String dayLabel = generateDayLabel(dayDisplayName, isRtl);
+            canvas.drawText(dayLabel, x, y, mMonthDayLabelPaint);
         }
     }
 
@@ -904,5 +907,24 @@ public abstract class MonthView extends View {
      */
     public interface OnDayClickListener {
         public void onDayClick(MonthView view, CalendarDay day);
+    }
+
+    /**
+     * Formats a given Day's display name into a single character label
+     *
+     * @param input display name of the day (Saturday, Monday .. etc)
+     * @param isRtl true if the input's written script is right-to-left
+     * @return
+     */
+    private String generateDayLabel(String input, boolean isRtl) {
+        Locale locale = Locale.getDefault();
+        // 'special-case'-ing Chinese languages as their Day labels are written right-to-left
+        if (isRtl || locale.equals(Locale.SIMPLIFIED_CHINESE) ||
+                locale.equals(Locale.TRADITIONAL_CHINESE) ||
+                locale.equals(new Locale("zh", "HK"))) {
+            return input.substring(input.length()-1);
+        } else {
+            return input.substring(0,1);
+        }
     }
 }
