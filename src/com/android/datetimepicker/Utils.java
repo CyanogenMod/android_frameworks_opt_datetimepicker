@@ -25,6 +25,7 @@ import android.text.format.Time;
 import android.view.View;
 
 import java.util.Calendar;
+import java.util.Locale;
 
 /**
  * Utility helper functions for time and date pickers.
@@ -136,5 +137,21 @@ public class Utils {
         pulseAnimator.setDuration(PULSE_ANIMATOR_DURATION);
 
         return pulseAnimator;
+    }
+
+    /**
+     * Determines if the device's current default locale uses right-to-left written script
+     */
+    public static boolean isRtl() {
+        return isRtl(Locale.getDefault());
+    }
+
+    /**
+     * Determines if a particular locale uses right-to-left written script
+     */
+    public static boolean isRtl(Locale locale) {
+        final int directionality = Character.getDirectionality(locale.getDisplayName().charAt(0));
+        return directionality == Character.DIRECTIONALITY_RIGHT_TO_LEFT ||
+                directionality == Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC;
     }
 }
